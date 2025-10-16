@@ -1,0 +1,96 @@
+# -----------------------------
+# OS / editor cruft
+# -----------------------------
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.nfs*
+
+# -----------------------------
+# Python / notebooks
+# -----------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.conda/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# -----------------------------
+# Build / binaries
+# -----------------------------
+bin/
+!bin/README.md
+*.o
+*.so
+*.a
+
+# -----------------------------
+# Logs (project-wide)
+# -----------------------------
+logs/
+scripts/logs/
+**/*.log
+**/*.out
+**/*.err
+
+# HPC scheduler logs (Slurm/PBS/LSF)
+slurm-*.out
+slurm-*.err
+*.o[0-9]*
+*.e[0-9]*
+
+# -----------------------------
+# LAMMPS runtime outputs
+# -----------------------------
+runs/                         
+**/dumps/
+**/post/
+**/figures/
+**/thermo.dat
+**/ttm_core.dat
+**/*.dump
+**/*.lammpstrj
+
+# -----------------------------
+# Generated analysis artifacts
+# -----------------------------
+analysis/**/*.csv
+analysis/**/*.npz
+analysis/**/*.png
+analysis/**/*.pdf
+analysis/**/*.txt
+figures/phase1/
+figures/phase2/
+!analysis/definitions.md
+!analysis/templates/**
+!analysis/README.md
+!figures/README.md
+
+# -----------------------------
+# Inputs — keep sources, ignore generated structures
+# -----------------------------
+!inputs/structure/POSCAR_CeO2_unit.vasp
+!inputs/ttm/**
+# Ignore auto-gener
+inputs/structure/*.lmp
+inputs/structure/*.json
+
+# -----------------------------
+# Environments
+# -----------------------------
+!env/environment.yml
+env/*lock*
+env/*.log
+
+.thirdparty/
+inputs/structure/*.lmp
+inputs/structure/*.json
+logs/
+scripts/logs/
+**/*.log
+**/*.out
+**/*.err
