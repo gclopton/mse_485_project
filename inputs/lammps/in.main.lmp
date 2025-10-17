@@ -1,4 +1,18 @@
-
+include ${VARS_FILE}
+variable UNITS     string ${p_units_family}
+variable BX        string ${p_boundaries_x}
+variable BY        string ${p_boundaries_y}
+variable BZ        string ${p_boundaries_z}
+variable DATAFILE  string ${p_structure_data_path}
+variable DT        equal  ${p_time_dt_fs}*1.0e-3
+variable NSTEPS    equal  ceil(${p_time_t_total_ps}/v_DT)
+variable R0        equal  ${p_source_r0_nm}
+variable SE        equal  ${p_source_Se_eV_per_A}
+variable G0        equal  ${p_ttm_coupling_g0_W_m3K}
+variable KE_FILE   string ${p_ttm_ke_curve_file}
+variable CE_FILE   string ${p_ttm_Ce_curve_file}
+variable GRID_FILE string ${p_ttm_grid_file}
+variable SRC_FILE  string inputs/ttm/source_profile.yaml
 units          ${UNITS}
 atom_style     charge
 boundary       ${BX} ${BY} ${BZ}

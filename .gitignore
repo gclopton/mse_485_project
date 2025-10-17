@@ -94,3 +94,8 @@ scripts/logs/
 **/*.log
 **/*.out
 **/*.err
+
+# -----------------------------
+# Scripts
+# -----------------------------
+scripts/generate_constant_ke_reference.py
