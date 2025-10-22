@@ -12,18 +12,20 @@ set -Eeuo pipefail
 LMP_BIN="${LMP:-lmp}"         # override with env LMP or --lmp
 RUN_DIR=""
 DRY_RUN=0
+NP=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --lmp)       LMP_BIN="$2"; shift 2 ;;
     --run-dir)   RUN_DIR="$2"; shift 2 ;;
     --dry-run)   DRY_RUN=1; shift ;;
+    --np)        NP="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--lmp /path/to/lmp] [--run-dir runs/phase0_nominal/<stamp>] [--dry-run]"
+      echo "Usage: $0 [--lmp /path/to/lmp] [--np N] [--run-dir runs/phase0_nominal/<stamp>] [--dry-run]"
       exit 0
       ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
-  case_esac
+  esac
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -32,7 +34,7 @@ cd "$REPO_ROOT"
 
 # --------------- Parse physics.yaml (and pick up TTM paths) ---------------
 # We use a tiny Python helper (PyYAML) to emit shell assignments.
-read -r -d '' PY_HELPER << 'PYCODE'
+read -r -d '' PY_HELPER << 'PYCODE' || true
 import sys, yaml, json, pathlib
 p = pathlib.Path("config/physics.yaml")
 d = yaml.safe_load(p.read_text())
@@ -164,9 +166,13 @@ LAMMPS_IN="inputs/lammps/in.main.lmp"
 LOGFILE="$RUN_DIR/logs/log.lammps"
 SCREEN="$RUN_DIR/logs/screen.out"
 
+LAUNCHER=()
+if [[ -n "$NP" ]]; then LAUNCHER=( mpirun -np "$NP" ); fi
+
 LAMMPS_CMD=(
-  "$LMP_BIN" -in "$LAMMPS_IN"
+  ${LAUNCHER[@]} "$LMP_BIN" -in "$LAMMPS_IN"
   -log "$LOGFILE"
+  -var OUTDIR "$RUN_DIR"
   -var UNITS "$UNITS"
   -var DATAFILE "$DATAFILE"
   -var DT "$DT"

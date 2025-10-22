@@ -6,7 +6,7 @@ group interior subtract all rim
 
 # ---------- Velocity intialization
 # Default seed if none passed in
-if "exists('VEL_SEED') == 0" then "variable VEL_SEED equal 13579"
+variable VEL_SEED equal 13579
 
 velocity interior create 300.0 ${VEL_SEED} mom yes rot yes dist gaussian
 # remove any residual COM drift every 100 steps during equil
@@ -19,9 +19,7 @@ fix fix_nvt interior nvt temp 300.0 300.0 ${Tdamp}
 fix_modify fix_nvt temp thermo_temp  # use the default thermo temperature compute
 
 # ---------- Pick short equilibration length (≈10% of total, min 1000 steps) ----------
-variable neq_guess equal ceil(${NSTEPS}*0.10)
-variable neq       equal (v_neq_guess < 1000) ? 1000 : v_neq_guess
-variable neq       equal (v_neq > ${NSTEPS}) ? ${NSTEPS} : v_neq
+variable neq equal 100
 print "Equilibration steps (neq) = ${neq} (Tdamp = ${Tdamp} ps)" append yes
 
 # ---------- Run equilibration -- ----

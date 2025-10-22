@@ -15,7 +15,7 @@ variable Z_O  equal 8
 variable rc_buck equal ${rc_buck}
 if "${rc_buck} <= 0.0" then "variable rc_buck equal 10.0"
 
-pair_style hybrid/overlay buck/coul/long ${rc_buck} zbl
+pair_style hybrid/overlay buck/coul/long ${rc_buck} zbl 0.5 1.5
 
 include inputs/lammps/includes/params/ceo2_buck_hybrid.params
 
