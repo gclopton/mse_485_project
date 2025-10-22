@@ -1,0 +1,92 @@
+LAMMPS (22 Jul 2025)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
+  using 1 OpenMP thread(s) per MPI task
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.024 seconds
+UNITS=metal, DT(ps)=0.0005, NSTEPS=400
+BOUNDARY=(p,p,p)
+DATAFILE=inputs/structure/data.ceo2_4x4x8nm.lmp
+WARNING: Detected non-ASCII characters in input. Will try to continue by replacing with ASCII equivalents where known. (src/input.cpp:478)
+TTM: R0(nm)=4.5, Se(eV/…)=27, g0(W/m^3/K)=7.4e+16
+TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'
+PPPM: accuracy=0.0001 (force RMS), order=5
+10065 atoms in group rim
+RIM: width=1.5 nm (15 …), gamma=1 ps^-1, T=300 K, damp=1 ps
+=== Equilibration stage: brief NVT at 300 K ===
+1455 atoms in group interior
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+PPPM initialization ...
+  using 12-bit tables for long-range coulomb
+  G vector (1/distance) = 0.29782701
+  grid = 36 36 60
+  stencil order = 5
+  estimated absolute RMS force accuracy = 0.0014119572
+  estimated relative force accuracy = 9.8054999e-05
+  using double precision FFTW3
+  3d grid and FFT values/proc = 123883 77760
+Generated 0 of 1 mixed pair_coeff terms from geometric mixing rule
+Neighbor list info ...
+  update: every = 1 steps, delay = 0 steps, check = yes
+  max neighbors/atom: 2000, page size: 100000
+  master list distance cutoff = 12
+  ghost atom cutoff = 12
+  binsize = 6, bins = 8 8 14
+  2 neighbor lists, perpetual/occasional/extra = 2 0 0
+  (1) pair buck/coul/long, perpetual
+      attributes: half, newton on, cut 12
+      pair build: half/bin/atomonly/newton
+      stencil: half/bin/3d
+      bin: standard
+  (2) pair zbl, perpetual, copy from (1)
+      attributes: half, newton on
+      pair build: copy
+      stencil: none
+      bin: none
+Setting up Verlet run ...
+  Unit style    : metal
+  Current step  : 0
+  Time step     : 0.0005
+Per MPI rank memory allocation (min/avg/max) = 45.56 | 45.56 | 45.56 Mbytes
+   Step          Time           Temp          Press          PotEng         KinEng         TotEng         E_vdwl         E_coul         E_long    
+         0   0              37.86787       970272.22     -103176.74      56.383275     -103120.36      66299.204     -89201.377     -80274.571    
+       100   0.05           15.347858      970128.56     -103140.9       22.852156     -103118.04      66308.578     -89175.667     -80273.806    
+Loop time of 5.54804 on 1 procs for 100 steps with 11520 atoms
+
+Performance: 0.779 ns/day, 30.822 hours/ns, 18.024 timesteps/s, 207.641 katom-step/s
+100.0% CPU use with 1 MPI tasks x 1 OpenMP threads
+
+MPI task timing breakdown:
+Section |  min time  |  avg time  |  max time  |%varavg| %total
+---------------------------------------------------------------
+Pair    | 4.7157     | 4.7157     | 4.7157     |   0.0 | 85.00
+Kspace  | 0.76153    | 0.76153    | 0.76153    |   0.0 | 13.73
+Neigh   | 0          | 0          | 0          |   0.0 |  0.00
+Comm    | 0.010929   | 0.010929   | 0.010929   |   0.0 |  0.20
+Output  | 4.509e-05  | 4.509e-05  | 4.509e-05  |   0.0 |  0.00
+Modify  | 0.055926   | 0.055926   | 0.055926   |   0.0 |  1.01
+Other   |            | 0.003905   |            |       |  0.07
+
+Nlocal:          11520 ave       11520 max       11520 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Nghost:          22556 ave       22556 max       22556 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+Neighs:    3.11808e+06 ave 3.11808e+06 max 3.11808e+06 min
+Histogram: 1 0 0 0 0 0 0 0 0 0
+
+Total # of neighbors = 3118080
+Ave neighs/atom = 270.66667
+Neighbor list builds = 0
+Dangerous builds = 0
+=== Equilibration complete; handing off to TTM spike ===
+=== TTM spike stage: NVE (interior) + USER-TTM electron field ===
+1455 atoms in group interior
+TTM source: r0 = 4.5 nm = 45 … ; Se = 27 eV/… ; g0 = 7.4e+16 W/m^3/K
+TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'
+ERROR: Unrecognized fix style 'ttm/yaml' (src/modify.cpp:928)
+Last input line: fix f_ttm all ttm/yaml ke_file ${KE_FILE} Ce_file ${CE_FILE} grid_file ${GRID_FILE} source_file ${SRC_FILE} g0 ${G0} Se ${SE} r0 ${r0_A}
+--> parsed line: fix f_ttm all ttm/yaml ke_file inputs/ttm/ke_reference.csv Ce_file inputs/ttm/Ce_reference.csv grid_file inputs/ttm/grid.yaml source_file inputs/ttm/source_profile.yaml g0 7.4e+16 Se 27 r0 45 
+                               ^^^^^^^^

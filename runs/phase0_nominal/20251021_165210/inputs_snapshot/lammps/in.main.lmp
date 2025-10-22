@@ -1,0 +1,72 @@
+variable UNITS     string ${UNITS}
+variable BX        string ${BX}
+variable BY        string ${BY}
+variable BZ        string ${BZ}
+variable DATAFILE  string ${DATAFILE}
+variable DT        equal  ${DT}
+variable NSTEPS    equal  ${NSTEPS}
+variable R0        equal  ${R0}
+variable SE        equal  ${SE}
+variable G0        equal  ${G0}
+variable KE_FILE   string ${KE_FILE}
+variable CE_FILE   string ${CE_FILE}
+variable GRID_FILE string ${GRID_FILE}
+variable SRC_FILE  string ${SRC_FILE}
+units          ${UNITS}
+atom_style     charge
+boundary       ${BX} ${BY} ${BZ}
+
+# ---------- read structure ----------
+read_data      ${DATAFILE}
+
+# ---------- neighbor & thermo policy ----------
+neighbor       2.0 bin
+neigh_modify   delay 0 every 1 check yes
+
+variable       thermo_every equal 100
+thermo_style   custom step time temp press pe ke etotal evdwl ecoul elong
+thermo         ${thermo_every}
+
+# ----- output directory for dumps (from runner) -----
+variable OUTDIR string ${OUTDIR}
+# compact thermo time series for analysis
+variable s equal step
+variable t equal time
+variable T equal temp
+variable P equal press
+variable PE equal pe
+variable KE equal ke
+variable ET equal etotal
+fix f_thermo all ave/time ${thermo_every} 1 ${thermo_every} v_s v_t v_T v_P v_PE v_KE v_ET file ${OUTDIR}/dumps/thermo.dat ave one
+
+
+# ---------- echo key parameters to the log for provenance
+print "UNITS=${UNITS}, DT(ps)=${DT}, NSTEPS=${NSTEPS}"        append yes
+print "BOUNDARY=(${BX},${BY},${BZ})"                           append yes
+print "DATAFILE=${DATAFILE}"                                   append yes
+print "TTM: R0(nm)=${R0}, Se(eV/Å)=${SE}, g0(W/m^3/K)=${G0}"  append yes
+print "TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'" append yes
+
+# ---------- include directories
+# This deck is run from the repo root; adjust if you change invocation.
+variable       INC_DIR string inputs/lammps/includes
+
+# ---------- force field & electrostatics (fragments) ----------
+include        ${INC_DIR}/pair_ceo2_buck.in       # Buckingham + Coulomb long-range
+include        ${INC_DIR}/pair_zbl_overlay.in     # ZBL overlay for short-range regularization
+include        ${INC_DIR}/kspace_pppm.in          # PPPM accuracy / mesh
+include        ${INC_DIR}/rim_langevin.in         # x–y rim region + Langevin damping
+
+# Notes:
+# - The includes may read optional variables RIM_GAMMA, RIM_WIDTH_NM, RIM_TK if defined.
+# - No files are written by these includes; they instantiate styles/coeffs/fixes in memory.
+
+# ---------- set timestep and global run control ----------
+timestep       ${DT}
+
+# ---------- delegate to stage scripts ----------
+include        inputs/lammps/in.equil.lmp         # short NVT settle at 300 K with PPPM active
+include        inputs/lammps/in.ttm_spike.lmp     # USER-TTM spike: reads KE_FILE, CE_FILE, GRID_FILE, SRC_FILE
+                                                   # and uses R0, SE, G0
+
+# ---------- end ----------

@@ -1,0 +1,7 @@
+LAMMPS (22 Jul 2025)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
+  using 1 OpenMP thread(s) per MPI task
+
+units          ${UNITS}
+ERROR on proc 0: Substitution for illegal variable UNITS
+For more information see https://docs.lammps.org/err0013 (src/input.cpp:665)

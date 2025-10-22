@@ -1,0 +1,1 @@
+scripts/run_nominal.sh: line 213: mpirun -np 1 /u/gclopton/opt/lammps-ttm/bin/lmp: No such file or directory

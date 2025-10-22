@@ -1,0 +1,24 @@
+# ------------------------------------------------------------
+# ZBL overlay for short-range regularization in CeO2
+# Switch to hybrid/overlay so ZBL acts at very small r,
+# while Buckingham + long-range Coulomb control normal bonding..
+#
+# Prereq: variable rc_buck defined in pair_ceo2_buck.in (fallback: 10 Å).
+# Types: 1 = Ce4+ (Z=58), 2 = O2- (Z=8)
+# Units: metal (Å, ps, eV, ...).
+# ------------------------------------------------------------
+
+# Atomic numbers for ZBL
+variable Z_Ce equal 58
+variable Z_O  equal 8
+
+variable rc_buck equal ${rc_buck}
+if "${rc_buck} <= 0.0" then "variable rc_buck equal 10.0"
+
+pair_style hybrid/overlay buck/coul/long ${rc_buck} zbl
+
+include inputs/lammps/includes/params/ceo2_buck_hybrid.params
+
+pair_coeff 1 1 zbl ${Z_Ce} ${Z_Ce}
+pair_coeff 1 2 zbl ${Z_Ce} ${Z_O}
+pair_coeff 2 2 zbl ${Z_O}  ${Z_O}

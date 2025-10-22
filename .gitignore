@@ -44,9 +44,22 @@ slurm-*.err
 *.e[0-9]*
 
 # -----------------------------
-# LAMMPS runtime outputs
+# LAMMPS runtime outputs (default: ignore all)
+# Keep only tiny provenance (manifest, logs, inputs_snapshot)
 # -----------------------------
-runs/                         
+# Ignore the runs tree by default…
+runs/*
+# …but allow directory traversal for sub-exceptions:
+!runs/**/
+# Whitelist minimal artifacts for review:
+!runs/**/manifest.yaml
+!runs/**/logs/
+!runs/**/logs/log.lammps
+!runs/**/logs/screen.out
+!runs/**/inputs_snapshot/
+!runs/**/inputs_snapshot/**
+
+# Still ignore heavy artifacts anywhere under runs:
 **/dumps/
 **/post/
 **/figures/
@@ -71,11 +84,11 @@ figures/phase2/
 !figures/README.md
 
 # -----------------------------
-# Inputs — keep sources, ignore generated structures
+# Inputs — keep sources, ignore generated structures by default
+# (Track at least one canonical .lmp for Phase 0, see note below)
 # -----------------------------
-!inputs/structure/POSCAR_CeO2_unit.vasp
 !inputs/ttm/**
-# Ignore auto-gener
+!inputs/structure/POSCAR_CeO2_unit.vasp
 inputs/structure/*.lmp
 inputs/structure/*.json
 
@@ -86,16 +99,13 @@ inputs/structure/*.json
 env/*lock*
 env/*.log
 
+# -----------------------------
+# Third-party bundles
+# -----------------------------
 .thirdparty/
-inputs/structure/*.lmp
-inputs/structure/*.json
-logs/
-scripts/logs/
-**/*.log
-**/*.out
-**/*.err
 
 # -----------------------------
 # Scripts
 # -----------------------------
-scripts/generate_constant_ke_reference.py
+# (Do NOT ignore your generator — track it!)
+# scripts/generate_constant_ke_reference.py

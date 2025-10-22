@@ -1,0 +1,17 @@
+LAMMPS (22 Jul 2025)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread.
+  using 1 OpenMP thread(s) per MPI task
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.026 seconds
+UNITS=metal, DT(ps)=0.0005, NSTEPS=400
+BOUNDARY=(p,p,p)
+DATAFILE=inputs/structure/data.ceo2_4x4x8nm.lmp
+WARNING: Detected non-ASCII characters in input. Will try to continue by replacing with ASCII equivalents where known. (src/input.cpp:478)
+TTM: R0(nm)=4.5, Se(eV/…)=27, g0(W/m^3/K)=7.4e+16
+TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'
+ERROR: Invalid Boolean syntax in if command (src/variable.cpp:5451)
+Last input line: exists('rc_buck') == 0
