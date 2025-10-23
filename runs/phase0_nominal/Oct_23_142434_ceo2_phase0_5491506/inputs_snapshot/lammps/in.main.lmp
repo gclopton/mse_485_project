@@ -1,0 +1,55 @@
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+
+units           ${UNITS}
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+
+# --- live thermo to both screen and log ---
+thermo          100
+thermo_style    custom step time temp press pe ke etotal evdwl ecoul elong
+thermo_modify   flush yes lost warn
+
+# (Optional) small heartbeat file you can tail separately
+variable s equal step
+variable T equal temp
+fix hb all print 100 "${s} ${T}" file "${OUTDIR}/post/heartbeat.tsv" screen no title "step temp"
+
+# --- structure & masses ---
+read_data       ${DATAFILE}
+mass 1 140.116
+mass 2  15.999
+
+# --- neighbor settings ---
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes
+
+# --- lightweight writers for later analysis ---
+variable s   equal step
+variable t   equal time
+variable T   equal temp
+variable P   equal press
+variable PE  equal pe
+variable KE  equal ke
+variable ET  equal etotal
+print "step time T P PE KE ET" file "${OUTDIR}/dumps/thermo.dat" screen no
+fix f_thermoprint all print 100 "${s} ${t} ${T} ${P} ${PE} ${KE} ${ET}" \
+     file "${OUTDIR}/dumps/thermo.dat" screen no append yes
+
+# trajectory (keep small while debugging)
+dump dtraj all custom 200 ${OUTDIR}/dumps/traj.dump id type x y z
+dump_modify dtraj sort id
+
+# --- includes (KSPACE, pair styles, optional RIM) ---
+include         inputs/lammps/includes/kspace_pppm.in
+include         inputs/lammps/includes/pair_ceo2_buck.in
+# include       inputs/lammps/includes/pair_zbl_overlay.in   # enable later if needed
+include         inputs/lammps/includes/rim_langevin.in
+
+# --- time step & phases ---
+timestep        ${DT}
+include         inputs/lammps/in.equil.lmp
+include         inputs/lammps/in.ttm_spike.lmp
+
+# (no EOF here!)

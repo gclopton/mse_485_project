@@ -1,0 +1,23 @@
+[1761248336.484508] [ccc0334:3074397:0]     ucp_context.c:2339 UCX  INFO  Version 1.19.0 (loaded from /lib64/libucp.so.0)
+[1761248336.534251] [ccc0334:3074397:0]          parser.c:2368 UCX  INFO  UCX_* env variables: UCX_NET_DEVICES=mlx5_0:1 UCX_IB_GID_INDEX=3 UCX_IB_TRAFFIC_CLASS=104 UCX_TLS=rc,self,sm UCX_SOCKADDR_TLS_PRIORITY=rdmacm UCX_LOG_LEVEL=info
+[1761248336.535076] [ccc0334:3074397:0]      ucp_worker.c:1903 UCX  INFO    ucp_context_0 self cfg#0 tag(self/memory rc_mlx5/mlx5_0:1 cma/memory)
+LAMMPS (29 Aug 2024 - Update 1)
+  using 1 OpenMP thread(s) per MPI task
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+
+units           ${UNITS}
+units           metal
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+boundary        p ${BY} ${BZ}
+boundary        p p ${BZ}
+boundary        p p p
+
+# --- live thermo to both screen and log ---
+thermo          100
+thermo_style    custom step time temp press pe ke etotal evdwl ecoul elong
+ERROR: Thermo_style command before simulation box is defined (src/output.cpp:899)
+Last command: thermo_style    custom step time temp press pe ke etotal evdwl ecoul elong
+srun: error: ccc0334: task 0: Exited with exit code 1

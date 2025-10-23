@@ -205,19 +205,16 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 # --------------- Launch ---------------
-# Build a launch prefix: use srun inside SLURM; otherwise run directly.
 LAUNCH=()
 if command -v srun >/dev/null 2>&1 && [[ -n "${SLURM_JOB_ID:-}" ]]; then
-  LAUNCH=(srun -u -n 1 --mpi=pmix)
+  LAUNCH=(srun -u -n 1)
 fi
 
-# Force line-buffered stdout/stderr if available so tail -f shows progress.
 STD_BUF=()
 if command -v stdbuf >/dev/null 2>&1; then
   STD_BUF=(stdbuf -oL -eL)
 fi
 
-# Always capture to screen.out so there’s something to tail even on early exit.
 "${LAUNCH[@]}" "${STD_BUF[@]}" "${LAMMPS_CMD[@]}" >"$SCREEN" 2>&1
 RC=$?
 
