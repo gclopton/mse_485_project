@@ -1,5 +1,0 @@
-LAMMPS (29 Aug 2024 - Update 1)
-  using 1 OpenMP thread(s) per MPI task
-cat > inputs/lammps/in.main.lmp <<'EOF'
-ERROR: Unknown command: cat > inputs/lammps/in.main.lmp <<'EOF' (src/input.cpp:314)
-Last command: cat > inputs/lammps/in.main.lmp <<'EOF'

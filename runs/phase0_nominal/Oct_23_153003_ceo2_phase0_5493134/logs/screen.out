@@ -1,0 +1,50 @@
+[1761251403.608797] [ccc0334:3087975:0]     ucp_context.c:2339 UCX  INFO  Version 1.19.0 (loaded from /lib64/libucp.so.0)
+[1761251403.665917] [ccc0334:3087975:0]          parser.c:2368 UCX  INFO  UCX_* env variables: UCX_NET_DEVICES=mlx5_0:1 UCX_IB_GID_INDEX=3 UCX_IB_TRAFFIC_CLASS=104 UCX_TLS=rc,self,sm UCX_SOCKADDR_TLS_PRIORITY=rdmacm UCX_LOG_LEVEL=info
+[1761251403.667379] [ccc0334:3087975:0]      ucp_worker.c:1903 UCX  INFO    ucp_context_0 self cfg#0 tag(self/memory rc_mlx5/mlx5_0:1 cma/memory)
+LAMMPS (29 Aug 2024 - Update 1)
+  using 1 OpenMP thread(s) per MPI task
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+
+units           ${UNITS}
+units           metal
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+boundary        p ${BY} ${BZ}
+boundary        p p ${BZ}
+boundary        p p p
+
+# --- structure & masses (defines the box!) ---
+read_data       ${DATAFILE}
+read_data       inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.049 seconds
+mass 1 140.116
+mass 2  15.999
+
+# --- live thermo to both screen and log (must be AFTER box exists) ---
+thermo          100
+thermo_style    custom step time temp press pe ke etotal evdwl ecoul elong
+thermo_modify   flush yes lost warn
+
+# (Optional) small heartbeat file you can tail separately
+variable s equal step
+variable T equal temp
+fix hb all print 100 "${s} ${T}" file "${OUTDIR}/post/heartbeat.tsv" screen no title "step temp"
+ERROR on proc 0: Cannot open fix print file ${OUTDIR}/post/heartbeat.tsv: No such file or directory (src/fix_print.cpp:67)
+Last command: fix hb all print 100 "${s} ${T}" file "${OUTDIR}/post/heartbeat.tsv" screen no title "step temp"
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI_COMM_WORLD
+  Proc: [[62865,0],0]
+  Errorcode: 1
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------
+srun: error: ccc0334: task 0: Exited with exit code 1
