@@ -1,0 +1,8 @@
+LAMMPS (29 Aug 2024 - Update 1)
+--------------------------------------------------------------------------
+Sorry!  You were supposed to get help about:
+    mpi-abort
+from the file:
+    /sw/apps/mpi/openmpi/5.0.1/gcc/share/openmpi/help-mpi-api.txt: No such file or directory
+But I couldn't find that topic in the file.  Sorry!
+--------------------------------------------------------------------------

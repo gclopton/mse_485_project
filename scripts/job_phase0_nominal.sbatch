@@ -1,36 +1,93 @@
 #!/bin/bash
-#SBATCH --job-name=ceo2_phase0
-#SBATCH --partition=mrsec           # adjust if your account uses a different queue
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=1         # increase if you want MPI ranks > 1
-#SBATCH --time=00:30:00
-#SBATCH -o logs/slurm-%j.out
-#SBATCH -e logs/slurm-%j.err
+#SBATCH -J ceo2_phase0
+#SBATCH -p eertekin
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -t 24:00:00
+#SBATCH -o runs/phase0_nominal/%x_%j/slurm.out
+#SBATCH -e runs/phase0_nominal/%x_%j/slurm.err
+# #SBATCH -A <your_allocation>    # uncomment & set if SLURM asks for an account
 
 set -Eeuo pipefail
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+IFS=$'\n\t'
+trap 'echo "[ERR] line $LINENO: $BASH_COMMAND" >&2' ERR
 
-# --- Modules: match your cluster environment ---
-module purge
-module load gcc/13.3.0 || true
-module load openmpi/5.0.1-gcc-13.3.0 || module load openmpi/5.0.1 || true
-module load fftw3 || true
+# ---------- Resolve repo root & runner ----------
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
 
-export OMP_NUM_THREADS=${OMP_NUM_THREADS:-1}
-
-# --- LAMMPS binary: must include 'fix ttm/yaml' ---
-# Set LMP_BIN to your YAML-enabled LAMMPS, e.g. from your group install.
-LMP_BIN=${LMP_BIN:-/path/to/lmp-with-ttm-yaml}
-
-# Optional sanity check inside the job environment
-if ! "$LMP_BIN" -help 2>/dev/null | grep -qi "ttm/yaml"; then
-  echo "ERROR: LAMMPS binary '$LMP_BIN' does not list 'ttm/yaml'." >&2
-  echo "       Use a YAML-enabled build or adjust LMP_BIN." >&2
-  exit 2
+# If you ran sbatch from repo/scripts, repo root is its parent; otherwise it's SUBMIT_DIR itself.
+if [[ -x "${SUBMIT_DIR}/scripts/run_nominal.sh" ]]; then
+  REPO_DIR="${SUBMIT_DIR}"
+elif [[ -x "$(dirname "${SUBMIT_DIR}")/scripts/run_nominal.sh" ]]; then
+  REPO_DIR="$(dirname "${SUBMIT_DIR}")"
+else
+  echo "ERROR: Cannot locate scripts/run_nominal.sh starting from: ${SUBMIT_DIR}" >&2
+  exit 127
 fi
 
-# MPI ranks = SLURM_NTASKS (defaults to 1)
-NP=${SLURM_NTASKS:-1}
+RUNNER="${REPO_DIR}/scripts/run_nominal.sh"
+cd "${REPO_DIR}"
+echo "SUBMIT_DIR: ${SUBMIT_DIR}"
+echo "REPO_DIR:   ${REPO_DIR}"
+echo "Runner:     ${RUNNER}"
+ls -l "${RUNNER}" || { echo "ERROR: runner not found or not executable"; exit 127; }
 
-# Launch Phase 0 nominal shot
-srun scripts/run_nominal.sh --np "$NP" --lmp "$LMP_BIN"
+# ---------- Toolchain (match your build) ----------
+module purge
+module load gcc/13.3.0
+module load openmpi/5.0.1
+module load fftw/3.3.10
+
+# ---------- Python / Conda env (needed for PyYAML in the runner) ----------
+# Use the site conda, same as on login shells.
+source /sw/apps/anaconda3/2024.10/etc/profile.d/conda.sh
+conda activate ceo2-shi
+
+# Prove PyYAML is present (prints into logs)
+python - <<'PY'
+import sys, yaml
+print(f"Python: {sys.version.split()[0]}")
+print(f"PyYAML: {yaml.__version__}")
+PY
+
+# ---------- LAMMPS (shared) ----------
+LAMMPS_ROOT=/u/gclopton/scratch/lammps/opt/lammps/stable_29Aug2024_update1
+LMP_BIN="${LAMMPS_ROOT}/bin/lmp"
+export LD_LIBRARY_PATH="${LAMMPS_ROOT}/lib64:${LAMMPS_ROOT}/lib:${LD_LIBRARY_PATH:-}"
+
+# OpenMPI plugins & safe defaults (avoid PML hiccups)
+# Keep threads low, let the module wire MPI correctly.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+# (Optional) If you truly need to pin to TCP only, you can keep:
+# export OMPI_MCA_btl=self,tcp
+# Otherwise leave OMPI/OPAL env unset; the module provides the right paths.
+
+# ---------- Dated run folder (always) ----------
+STAMP="$(date +%b_%d_%H%M%S)"                         # e.g., Oct_22_164336
+RUN_TAG="${STAMP}_${SLURM_JOB_NAME}_${SLURM_JOB_ID}"   # e.g., Oct_22_164336_ceo2_phase0_5480041
+RUN_DIR="${REPO_DIR}/runs/phase0_nominal/${RUN_TAG}"
+mkdir -p "${RUN_DIR}/logs" "${RUN_DIR}/dumps"
+
+# Redirect ALL output into the dated folder
+exec > >(tee -a "${RUN_DIR}/logs/job.out") 2> >(tee -a "${RUN_DIR}/logs/job.err" >&2)
+echo "Run tag: ${RUN_TAG}"
+echo "Nodes:   ${SLURM_NODELIST}"
+echo "LAMMPS:  ${LMP_BIN}"
+
+# ---------- Launch Phase 0 via runner ----------
+# Force working dir so relative paths inside the runner work.
+# Use bash -x for a crystal-clear trace in logs.
+set +e
+bash -x "${RUNNER}" --lmp "${LMP_BIN}" --run-dir "${RUN_DIR}"
+RC=$?
+set -e
+
+# Copy SLURM’s own stdout/err into the dated folder for one-stop logs
+SLURM_DIR="${REPO_DIR}/runs/phase0_nominal/${SLURM_JOB_NAME}_${SLURM_JOB_ID}"
+for f in slurm.out slurm.err; do
+  [[ -f "${SLURM_DIR}/${f}" ]] && cp -f "${SLURM_DIR}/${f}" "${RUN_DIR}/logs/${f}" || true
+done
+
+ln -sfn "${RUN_DIR}" "${REPO_DIR}/runs/phase0_nominal/LATEST"
+echo "Done. See ${RUN_DIR}/logs and ${RUN_DIR}/dumps."
+exit "${RC}"

@@ -3,25 +3,24 @@
 # Usage:
 #   scripts/run_nominal.sh [--lmp /path/to/lmp] [--run-dir runs/phase0_nominal/<stamp>] [--dry-run]
 # Requirements:
-#   - Python with PyYAML available in your conda env (env/environment.yml)
+#   - Python with PyYAML in your conda env
 #   - Repo layout as documented (inputs/, config/, etc.)
 
 set -Eeuo pipefail
+trap 'echo "[ERR] line $LINENO: $BASH_COMMAND" >&2' ERR
 
 # --------------- CLI ---------------
 LMP_BIN="${LMP:-lmp}"         # override with env LMP or --lmp
 RUN_DIR=""
 DRY_RUN=0
-NP=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --lmp)       LMP_BIN="$2"; shift 2 ;;
     --run-dir)   RUN_DIR="$2"; shift 2 ;;
     --dry-run)   DRY_RUN=1; shift ;;
-    --np)        NP="$2"; shift 2 ;;
     -h|--help)
-      echo "Usage: $0 [--lmp /path/to/lmp] [--np N] [--run-dir runs/phase0_nominal/<stamp>] [--dry-run]"
+      echo "Usage: $0 [--lmp /path/to/lmp] [--run-dir runs/phase0_nominal/<stamp>] [--dry-run]"
       exit 0
       ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
@@ -29,13 +28,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-
 cd "$REPO_ROOT"
 
 # --------------- Parse physics.yaml (and pick up TTM paths) ---------------
-# We use a tiny Python helper (PyYAML) to emit shell assignments.
-read -r -d '' PY_HELPER << 'PYCODE' || true
-import sys, yaml, json, pathlib
+# Use a tiny Python helper (PyYAML) to emit shell assignments.
+IFS= read -r -d '' PY_HELPER << 'PYCODE' || :
+import sys, yaml, pathlib
 p = pathlib.Path("config/physics.yaml")
 d = yaml.safe_load(p.read_text())
 
@@ -62,9 +60,9 @@ g0             = float(req(d,'ttm','coupling','g0_W_m3K'))
 ke_file        = req(d,'ttm','ke_curve_file')
 Ce_file        = req(d,'ttm','Ce_curve_file')
 grid_file      = req(d,'ttm','grid_file')
-src_file       = req(d,'source','pulse') and 'inputs/ttm/source_profile.yaml'  # keep explicit path in YAML if you prefer
+src_file       = req(d,'source','pulse') and 'inputs/ttm/source_profile.yaml'
 
-# Optional rim params (if present; otherwise let includes file set defaults)
+# Optional rim params
 rim = d.get('forcefield',{}).get('rim_langevin',{})
 gamma_ps_inv   = rim.get('gamma_ps_inv', None)
 rim_width_nm   = rim.get('width_nm', None)
@@ -123,21 +121,21 @@ mkdir -p "$RUN_DIR"/{logs,dumps,post} \
          "$RUN_DIR"
 
 # Copy snapshot of configs and inputs for provenance
-cp -f config/physics.yaml                  "$SNAP/physics.yaml" || true
-cp -f config/metrics.yaml                  "$SNAP/metrics.yaml"  || true
-cp -f config/figure_style.yaml             "$SNAP/figure_style.yaml" || true
+cp -f config/physics.yaml              "$SNAP/physics.yaml"        || true
+cp -f config/metrics.yaml              "$SNAP/metrics.yaml"        || true
+cp -f config/figure_style.yaml         "$SNAP/figure_style.yaml"   || true
 
-cp -f "$DATAFILE"                          "$SNAP/structure/" 
-cp -f inputs/lammps/in.main.lmp            "$SNAP/lammps/"
-cp -f inputs/lammps/in.equil.lmp           "$SNAP/lammps/"
-cp -f inputs/lammps/in.ttm_spike.lmp       "$SNAP/lammps/"
-cp -f inputs/lammps/includes/*.in          "$SNAP/lammps/includes/" 2>/dev/null || true
+cp -f "$DATAFILE"                      "$SNAP/structure/"
+cp -f inputs/lammps/in.main.lmp        "$SNAP/lammps/"
+cp -f inputs/lammps/in.equil.lmp       "$SNAP/lammps/"
+cp -f inputs/lammps/in.ttm_spike.lmp   "$SNAP/lammps/"
+cp -f inputs/lammps/includes/*.in      "$SNAP/lammps/includes/"    2>/dev/null || true
 [[ -f inputs/lammps/tables/zbl.table ]] && cp -f inputs/lammps/tables/zbl.table "$SNAP/lammps/"
 
-cp -f "$KE_FILE"                           "$SNAP/ttm/" || true
-cp -f "$CE_FILE"                           "$SNAP/ttm/" || true
-cp -f "$GRID_FILE"                         "$SNAP/ttm/" || true
-cp -f "$SRC_FILE"                          "$SNAP/ttm/" || true
+cp -f "$KE_FILE"                       "$SNAP/ttm/" || true
+cp -f "$CE_FILE"                       "$SNAP/ttm/" || true
+cp -f "$GRID_FILE"                     "$SNAP/ttm/" || true
+cp -f "$SRC_FILE"                      "$SNAP/ttm/" || true
 
 # --------------- Minimal manifest ---------------
 cat > "$RUN_DIR/manifest.yaml" <<EOF
@@ -162,35 +160,32 @@ timestamp: ${timestamp}
 EOF
 
 # --------------- Build LAMMPS command ---------------
-LAMMPS_IN="inputs/lammps/in.main.lmp"
-LOGFILE="$RUN_DIR/logs/log.lammps"
-SCREEN="$RUN_DIR/logs/screen.out"
+LAMMPS_IN=inputs/lammps/in.main.lmp
+LOGFILE="${RUN_DIR}/logs/log.lammps"
+SCREEN="${RUN_DIR}/logs/screen.out"
 
-LAUNCHER=()
-if [[ -n "$NP" ]]; then LAUNCHER=( mpirun -np "$NP" ); fi
+# Ensure log paths exist and create files so we have something even on early exit
+mkdir -p "$(dirname "$SCREEN")" "$(dirname "$LOGFILE")"
+: > "$SCREEN"
+: > "$LOGFILE"
 
 LAMMPS_CMD=(
-  ${LAUNCHER[@]} "$LMP_BIN" -in "$LAMMPS_IN"
-  -log "$LOGFILE"
-  -var OUTDIR "$RUN_DIR"
-  -var UNITS "$UNITS"
-  -var DATAFILE "$DATAFILE"
-  -var DT "$DT"
-  -var NSTEPS "$NSTEPS"
-  -var R0 "$R0"
-  -var SE "$SE"
-  -var G0 "$G0"
-  -var KE_FILE "$KE_FILE"
-  -var CE_FILE "$CE_FILE"
-  -var GRID_FILE "$GRID_FILE"
-  -var SRC_FILE "$SRC_FILE"
+  "$LMP_BIN" -echo both
+  -in "$LAMMPS_IN" -log "$LOGFILE"
+  -var UNITS "$UNITS" -var DATAFILE "$DATAFILE"
+  -var DT "$DT" -var NSTEPS "$NSTEPS"
+  -var R0 "$R0" -var SE "$SE" -var G0 "$G0"
+  -var KE_FILE "$KE_FILE" -var CE_FILE "$CE_FILE"
+  -var GRID_FILE "$GRID_FILE" -var SRC_FILE "$SRC_FILE"
   -var BX "$BX" -var BY "$BY" -var BZ "$BZ"
+  -var VARS_FILE "$RUN_DIR/vars.lmp"
+  -var OUTDIR "$RUN_DIR" 
 )
 
 # Optional rim parameters (only if present in YAML and consumed by your includes)
-[[ ${RIM_GAMMA:-}     ]] && LAMMPS_CMD+=( -var RIM_GAMMA "$RIM_GAMMA" )
-[[ ${RIM_WIDTH_NM:-}  ]] && LAMMPS_CMD+=( -var RIM_WIDTH_NM "$RIM_WIDTH_NM" )
-[[ ${RIM_TK:-}        ]] && LAMMPS_CMD+=( -var RIM_TK "$RIM_TK" )
+[[ ${RIM_GAMMA:-}    ]] && LAMMPS_CMD+=( -var RIM_GAMMA "$RIM_GAMMA" )
+[[ ${RIM_WIDTH_NM:-} ]] && LAMMPS_CMD+=( -var RIM_WIDTH_NM "$RIM_WIDTH_NM" )
+[[ ${RIM_TK:-}       ]] && LAMMPS_CMD+=( -var RIM_TK "$RIM_TK" )
 
 echo "=== Phase 0 nominal shot ==="
 echo "Run dir:    $RUN_DIR"
@@ -210,11 +205,31 @@ if [[ $DRY_RUN -eq 1 ]]; then
 fi
 
 # --------------- Launch ---------------
-# Many LAMMPS builds support -screen <file>; if not, redirect stdout.
-if "$LMP_BIN" -help 2>/dev/null | grep -qi -- "-screen"; then
-  "${LAMMPS_CMD[@]}" -screen "$SCREEN"
-else
-  "${LAMMPS_CMD[@]}" >"$SCREEN" 2>&1
+# Build a launch prefix: use srun inside SLURM; otherwise run directly.
+LAUNCH=()
+if command -v srun >/dev/null 2>&1 && [[ -n "${SLURM_JOB_ID:-}" ]]; then
+  LAUNCH=(srun -u -n 1 --mpi=pmix)
+fi
+
+# Force line-buffered stdout/stderr if available so tail -f shows progress.
+STD_BUF=()
+if command -v stdbuf >/dev/null 2>&1; then
+  STD_BUF=(stdbuf -oL -eL)
+fi
+
+# Always capture to screen.out so there’s something to tail even on early exit.
+"${LAUNCH[@]}" "${STD_BUF[@]}" "${LAMMPS_CMD[@]}" >"$SCREEN" 2>&1
+RC=$?
+
+if (( RC != 0 )); then
+  echo "LAMMPS exited with RC=$RC" >&2
+  echo "---- screen.out (head) ----" >&2
+  sed -n '1,80p'   "$SCREEN" >&2 || true
+  echo "---- screen.out (tail) ----" >&2
+  tail -n 80       "$SCREEN" >&2 || true
+  echo "---- log.lammps (tail) ----" >&2
+  tail -n 120      "$LOGFILE" >&2 || true
+  exit "$RC"
 fi
 
 echo "Done. Logs at: $RUN_DIR/logs"

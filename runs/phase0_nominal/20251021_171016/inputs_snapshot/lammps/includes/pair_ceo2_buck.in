@@ -1,4 +1,0 @@
-variable rc_buck equal 10.0
-pair_style   buck/coul/long ${rc_buck}
-pair_modify  mix arithmetic
-include inputs/lammps/includes/params/ceo2_buck.params

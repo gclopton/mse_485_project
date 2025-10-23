@@ -1,0 +1,29 @@
+LAMMPS (29 Aug 2024 - Update 1)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
+  using 1 OpenMP thread(s) per MPI task
+log ${OUTDIR}/logs/log.lammps
+log runs/phase0_nominal/readcheck_20251022_145657/logs/log.lammps
+echo both
+units metal
+atom_style charge
+boundary p p f
+read_data inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.024 seconds
+run 0
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+The log file lists these citations in BibTeX format.
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+WARNING: No fixes with time integration, atoms won't move (src/verlet.cpp:60)
+ERROR: Not all per-type masses are set. Type 1 is missing. (src/atom.cpp:763)
+Last command: run 0

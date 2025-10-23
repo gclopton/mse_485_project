@@ -1,0 +1,33 @@
+units metal
+atom_style charge
+boundary p p f
+read_data inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.024 seconds
+run 0
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+
+@Article{Gissinger24,
+ author = {Jacob R. Gissinger, Ilia Nikiforov, Yaser Afshar, Brendon Waters, Moon-ki Choi, Daniel S. Karls, Alexander Stukowski, Wonpil Im, Hendrik Heinz, Axel Kohlmeyer, and Ellad B. Tadmor},
+ title = {Type Label Framework for Bonded Force Fields in LAMMPS},
+ journal = {J. Phys. Chem. B},
+ year =    2024,
+ volume =  128,
+ number =  13,
+ pages =   {3282–-3297}
+}
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+WARNING: No fixes with time integration, atoms won't move (src/verlet.cpp:60)
+ERROR: Not all per-type masses are set. Type 1 is missing. (src/atom.cpp:763)
+Last command: run 0
