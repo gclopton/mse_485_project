@@ -112,3 +112,11 @@ DATAFILE=inputs/structure/data.ceo2_4x4x8nm.lmp
 TTM: R0(nm)=4.5, Se(eV/…)=27, g0(W/m^3/K)=7.4e+16
 TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'
 PPPM: accuracy=0.0001 (force RMS), order=5
+=== Equilibration stage: brief NVT at 300 K ===
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+=== Equilibration stage: brief NVT at 300 K ===
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+=== Equilibration complete; handing off to TTM spike ===
+=== TTM spike stage: NVE (interior) + USER-TTM electron field ===
+TTM source: r0 = 4.5 nm = 45 … ; Se = 27 eV/… ; g0 = 7.4e+16 W/m^3/K
+TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'

@@ -1,0 +1,21 @@
+print "=== TTM spike stage: NVE (interior) + USER-TTM electron field ===" append yes
+
+group interior subtract all rim
+variable r0_A equal ${R0}*10.0
+
+print "TTM source: r0 = ${R0} nm = ${r0_A} Å ; Se = ${SE} eV/Å ; g0 = ${G0} W/m^3/K" append yes
+print "TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'" append yes
+
+fix f_nve interior nve
+fix f_ttm all ttm/grid ke_file ${KE_FILE} Ce_file ${CE_FILE} grid_file ${GRID_FILE} source_file ${SRC_FILE} g0 ${G0} Se ${SE} r0 ${r0_A}
+run 0 post no
+variable nspike equal ${NSTEPS}
+if "exists('neq')" then "variable nspike equal ${NSTEPS} - ${neq}"
+
+print "Spike steps (nspike) = ${nspike}" append yes
+
+run ${nspike}
+unfix f_nve
+unfix f_ttm
+
+print "=== Spike complete; end of Phase 0 nominal shot ===" append yes

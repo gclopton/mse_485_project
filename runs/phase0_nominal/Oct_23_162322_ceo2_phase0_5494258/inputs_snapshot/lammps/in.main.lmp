@@ -34,11 +34,12 @@ variable ET  equal etotal
 
 # simple timeseries you can tail (written DURING runs)
 variable THFILE string ${OUTDIR}/dumps/thermo.tsv
-fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" \
+  file ${THFILE} screen no flush yes \
+  title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
 
-# optional: if you want a single line at step 0, uncomment the next two
-# run 0 post no
-# print "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no append yes
+# optional heartbeat (disabled)
+# fix hb all print 100 "${s} ${T}" file ${OUTDIR}/post/heartbeat.tsv screen no title "step temp"
 
 # --- neighbor / timestep ---
 neighbor        2.0 bin

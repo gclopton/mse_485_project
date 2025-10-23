@@ -1,0 +1,56 @@
+LAMMPS (29 Aug 2024 - Update 1)
+  using 1 OpenMP thread(s) per MPI task
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+units           ${UNITS}
+units           metal
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+boundary        p ${BY} ${BZ}
+boundary        p p ${BZ}
+boundary        p p p
+
+# --- structure & masses (defines the box) ---
+read_data       ${DATAFILE}
+read_data       inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.036 seconds
+mass            1 140.116
+mass            2 15.999
+
+# ensure per-run subdirs exist on the compute node
+shell           mkdir -p ${OUTDIR}/logs
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162322_ceo2_phase0_5494258/logs
+shell           mkdir -p ${OUTDIR}/dumps
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162322_ceo2_phase0_5494258/dumps
+shell           mkdir -p ${OUTDIR}/post
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162322_ceo2_phase0_5494258/post
+
+# --- temperature compute (valid before any run) ---
+compute         t_all all temp
+
+# --- live thermo (AFTER box exists) ---
+thermo          100
+thermo_style    custom step time temp press pe ke evdwl ecoul etotal
+thermo_modify   flush yes
+thermo_modify   temp t_all
+
+# --- scalars for writers ---
+variable s   equal step
+variable T   equal c_t_all
+variable P   equal press
+variable PE  equal pe
+variable KE  equal ke
+variable ET  equal etotal
+
+# simple timeseries you can tail (written DURING runs)
+variable THFILE string ${OUTDIR}/dumps/thermo.tsv
+variable THFILE string /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162322_ceo2_phase0_5494258/dumps/thermo.tsv
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" \
+ERROR: Unknown fix print keyword: \ (src/fix_print.cpp:81)
+Last command: fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" \

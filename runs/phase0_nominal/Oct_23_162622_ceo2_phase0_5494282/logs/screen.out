@@ -1,0 +1,108 @@
+[1761254783.017533] [ccc0334:3103466:0]     ucp_context.c:2339 UCX  INFO  Version 1.19.0 (loaded from /lib64/libucp.so.0)
+[1761254783.059157] [ccc0334:3103466:0]          parser.c:2368 UCX  INFO  UCX_* env variables: UCX_NET_DEVICES=mlx5_0:1 UCX_IB_GID_INDEX=3 UCX_IB_TRAFFIC_CLASS=104 UCX_TLS=rc,self,sm UCX_SOCKADDR_TLS_PRIORITY=rdmacm UCX_LOG_LEVEL=info
+[1761254783.059755] [ccc0334:3103466:0]      ucp_worker.c:1903 UCX  INFO    ucp_context_0 self cfg#0 tag(self/memory rc_mlx5/mlx5_0:1 cma/memory)
+LAMMPS (29 Aug 2024 - Update 1)
+  using 1 OpenMP thread(s) per MPI task
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+units           ${UNITS}
+units           metal
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+boundary        p ${BY} ${BZ}
+boundary        p p ${BZ}
+boundary        p p p
+
+# --- structure & masses (defines the box) ---
+read_data       ${DATAFILE}
+read_data       inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.031 seconds
+mass            1 140.116
+mass            2 15.999
+
+# ensure per-run subdirs exist on the compute node
+shell           mkdir -p ${OUTDIR}/logs
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162622_ceo2_phase0_5494282/logs
+shell           mkdir -p ${OUTDIR}/dumps
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162622_ceo2_phase0_5494282/dumps
+shell           mkdir -p ${OUTDIR}/post
+shell           mkdir -p /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162622_ceo2_phase0_5494282/post
+
+# --- temperature compute (valid before any run) ---
+compute         t_all all temp
+
+# --- live thermo (AFTER box exists) ---
+thermo          100
+thermo_style    custom step time temp press pe ke evdwl ecoul etotal
+thermo_modify   flush yes
+thermo_modify   temp t_all
+
+# --- scalars for writers ---
+variable s   equal step
+variable T   equal c_t_all
+variable P   equal press
+variable PE  equal pe
+variable KE  equal ke
+variable ET  equal etotal
+
+# simple timeseries you can tail (written DURING runs)
+variable THFILE string ${OUTDIR}/dumps/thermo.tsv
+variable THFILE string /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162622_ceo2_phase0_5494282/dumps/thermo.tsv
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" file /scratch/gclopton/lammps/runs/phase0_nominal/Oct_23_162622_ceo2_phase0_5494282/dumps/thermo.tsv screen no title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
+
+# optional: if you want a single line at step 0, uncomment the next two
+# run 0 post no
+# print "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no append yes
+
+# --- neighbor / timestep ---
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes
+timestep        ${DT}
+timestep        0.0005
+
+# --- electrostatics & short-range interactions ---
+include         inputs/lammps/includes/kspace_pppm.in
+kspace_style  pppm 1.0e-5
+kspace_modify order 5
+kspace_modify slab 3.0
+include         inputs/lammps/includes/pair_ceo2_buck.in
+variable rc_buck equal 12.0
+pair_style   buck/coul/long ${rc_buck}
+pair_style   buck/coul/long 12
+pair_modify  mix arithmetic
+# IMPORTANT: this params file must emit all three buck/coul/long pair_coeff lines:
+#   pair_coeff 1 1 buck/coul/long A11 rho11 C11
+#   pair_coeff 1 2 buck/coul/long A12 rho12 C12
+#   pair_coeff 2 2 buck/coul/long A22 rho22 C22
+include inputs/lammps/includes/params/ceo2_buck.params
+# Buckingham coefficients for fluorite CeO2 (rigid-ion)
+# Form: A [eV], rho [Å], C [eV·Å^6], cutoff [Å]
+# Source: Sayle et al., Nanoscale 2011, 3, 1823–1837, Table 1. (O–O, Ce–O; Ce–Ce set to zero)
+
+# O–O
+pair_coeff 2 2  22764.30   0.149   27.89   ${rc_buck}
+pair_coeff 2 2  22764.30   0.149   27.89   12
+
+# Ce–O
+pair_coeff 1 2   1986.83   0.351   20.40   ${rc_buck}
+pair_coeff 1 2   1986.83   0.351   20.40   12
+
+# Ce–Ce (short-range off; Coulomb only). LAMMPS requires a rho even when A=C=0.
+pair_coeff 1 1      0.0     1.0      0.0   ${rc_buck}
+pair_coeff 1 1      0.0     1.0      0.0   12
+# include       inputs/lammps/includes/pair_zbl_overlay.in
+include         inputs/lammps/includes/rim_langevin.in
+# rim_langevin.in — robust x–y rim sponge for boundary p p f (units metal)
+
+# Defaults (runner can override later if desired)
+variable RIM_WIDTH_NM equal 1.5
+ERROR: Cannot redefine variable as a different style (src/variable.cpp:453)
+Last command: variable RIM_WIDTH_NM equal 1.5
+srun: error: ccc0334: task 0: Exited with exit code 1

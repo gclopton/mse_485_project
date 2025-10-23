@@ -1,0 +1,192 @@
+[1761260839.841694] [ccc0218:3097039:0]     ucp_context.c:2339 UCX  INFO  Version 1.19.0 (loaded from /lib64/libucp.so.0)
+[1761260839.884718] [ccc0218:3097039:0]          parser.c:2368 UCX  INFO  UCX_* env variables: UCX_NET_DEVICES=mlx5_0:1 UCX_IB_GID_INDEX=3 UCX_IB_TRAFFIC_CLASS=104 UCX_TLS=rc,self,sm UCX_SOCKADDR_TLS_PRIORITY=rdmacm UCX_LOG_LEVEL=info
+[1761260839.885493] [ccc0218:3097039:0]      ucp_worker.c:1903 UCX  INFO    ucp_context_0 self cfg#0 tag(self/memory rc_mlx5/mlx5_0:1 cma/memory)
+LAMMPS (29 Aug 2024 - Update 1)
+  using 1 OpenMP thread(s) per MPI task
+# in.main.lmp — Phase 0 (debug-friendly, line-flushed)
+
+echo            both
+units           ${UNITS}
+units           metal
+atom_style      charge
+boundary        ${BX} ${BY} ${BZ}
+boundary        p ${BY} ${BZ}
+boundary        p p ${BZ}
+boundary        p p p
+
+# --- structure & masses (defines the box) ---
+read_data       ${DATAFILE}
+read_data       inputs/structure/data.ceo2_4x4x8nm.lmp
+Reading data file ...
+  orthogonal box = (0 0 0) to (43.739603 43.739603 82.011755)
+  1 by 1 by 1 MPI processor grid
+  reading atoms ...
+  11520 atoms
+  read_data CPU = 0.034 seconds
+mass            1 140.116
+mass            2 15.999
+
+# ensure per-run subdirs exist on the compute node
+shell           mkdir -p ${OUTDIR}/logs
+shell           mkdir -p /u/gclopton/scratch/lammps/runs/phase0_nominal/Oct_23_180719_ceo2_phase0_5495453/logs
+shell           mkdir -p ${OUTDIR}/dumps
+shell           mkdir -p /u/gclopton/scratch/lammps/runs/phase0_nominal/Oct_23_180719_ceo2_phase0_5495453/dumps
+shell           mkdir -p ${OUTDIR}/post
+shell           mkdir -p /u/gclopton/scratch/lammps/runs/phase0_nominal/Oct_23_180719_ceo2_phase0_5495453/post
+
+# --- temperature compute (valid before any run) ---
+compute         t_all all temp
+
+# --- live thermo (AFTER box exists) ---
+thermo          100
+thermo_style    custom step time temp press pe ke evdwl ecoul etotal
+thermo_modify   flush yes
+thermo_modify   temp t_all
+
+# --- scalars for writers ---
+variable s   equal step
+variable T   equal c_t_all
+variable P   equal press
+variable PE  equal pe
+variable KE  equal ke
+variable ET  equal etotal
+
+# simple timeseries you can tail (written DURING runs)
+variable THFILE string ${OUTDIR}/dumps/thermo.tsv
+variable THFILE string /u/gclopton/scratch/lammps/runs/phase0_nominal/Oct_23_180719_ceo2_phase0_5495453/dumps/thermo.tsv
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
+fix tsv all print 100 "${s} ${T} ${P} ${PE} ${KE} ${ET}" file /u/gclopton/scratch/lammps/runs/phase0_nominal/Oct_23_180719_ceo2_phase0_5495453/dumps/thermo.tsv screen no title "step T(K) P(bar) PE(eV) KE(eV) ET(eV)"
+
+# optional: if you want a single line at step 0, uncomment the next two
+# run 0 post no
+# print "${s} ${T} ${P} ${PE} ${KE} ${ET}" file ${THFILE} screen no append yes
+
+# --- neighbor / timestep ---
+neighbor        2.0 bin
+neigh_modify    delay 0 every 1 check yes
+timestep        ${DT}
+timestep        0.0005
+
+# --- electrostatics & short-range interactions ---
+include         inputs/lammps/includes/kspace_pppm.in
+kspace_style  pppm 1.0e-5
+kspace_modify order 5
+kspace_modify slab 3.0
+include         inputs/lammps/includes/pair_ceo2_buck.in
+variable rc_buck equal 12.0
+pair_style   buck/coul/long ${rc_buck}
+pair_style   buck/coul/long 12
+pair_modify  mix arithmetic
+# IMPORTANT: this params file must emit all three buck/coul/long pair_coeff lines:
+#   pair_coeff 1 1 buck/coul/long A11 rho11 C11
+#   pair_coeff 1 2 buck/coul/long A12 rho12 C12
+#   pair_coeff 2 2 buck/coul/long A22 rho22 C22
+include inputs/lammps/includes/params/ceo2_buck.params
+# Buckingham coefficients for fluorite CeO2 (rigid-ion)
+# Form: A [eV], rho [Å], C [eV·Å^6], cutoff [Å]
+# Source: Sayle et al., Nanoscale 2011, 3, 1823–1837, Table 1. (O–O, Ce–O; Ce–Ce set to zero)
+
+# O–O
+pair_coeff 2 2  22764.30   0.149   27.89   ${rc_buck}
+pair_coeff 2 2  22764.30   0.149   27.89   12
+
+# Ce–O
+pair_coeff 1 2   1986.83   0.351   20.40   ${rc_buck}
+pair_coeff 1 2   1986.83   0.351   20.40   12
+
+# Ce–Ce (short-range off; Coulomb only). LAMMPS requires a rho even when A=C=0.
+pair_coeff 1 1      0.0     1.0      0.0   ${rc_buck}
+pair_coeff 1 1      0.0     1.0      0.0   12
+# include       inputs/lammps/includes/pair_zbl_overlay.in
+include         inputs/lammps/includes/rim_langevin.in
+# rim_langevin.in — robust x–y rim sponge (units metal)
+# Expects: RIM_WIDTH_NM (nm), RIM_GAMMA (ps^-1), RIM_TK (K) via -var
+
+# Local RNG seed (kept distinct to avoid collisions)
+variable rim_seed equal 98765
+
+# Convert rim width to Å
+variable rim_wA   equal ${RIM_WIDTH_NM}*10.0
+variable rim_wA   equal 1.5*10.0
+
+# Capture box bounds into local variables (numbers)
+variable bxlo     equal xlo
+variable bxhi     equal xhi
+variable bylo     equal ylo
+variable byhi     equal yhi
+
+# Precompute slab faces (avoid spaces in expressions)
+variable bxlo_hi  equal v_bxlo+v_rim_wA
+variable bxhi_lo  equal v_bxhi-v_rim_wA
+variable bylo_hi  equal v_bylo+v_rim_wA
+variable byhi_lo  equal v_byhi-v_rim_wA
+
+# Four x/y edge slabs; thickness = rim_wA
+region rim_xlo block v_bxlo    v_bxlo_hi  INF INF INF INF units box
+region rim_xhi block v_bxhi_lo v_bxhi     INF INF INF INF units box
+region rim_ylo block INF INF   v_bylo     v_bylo_hi  INF INF units box
+region rim_yhi block INF INF   v_byhi_lo  v_byhi     INF INF units box
+
+# Union them into a single region, then define the rim group from that region
+region rim_union union 4 rim_xlo rim_xhi rim_ylo rim_yhi
+group  rim region rim_union
+10065 atoms in group rim
+
+# Langevin thermostat on the rim only (interior integrates elsewhere)
+fix f_rim rim langevin ${RIM_TK} ${RIM_TK} ${RIM_GAMMA} ${rim_seed} zero yes
+fix f_rim rim langevin 300 ${RIM_TK} ${RIM_GAMMA} ${rim_seed} zero yes
+fix f_rim rim langevin 300 300 ${RIM_GAMMA} ${rim_seed} zero yes
+fix f_rim rim langevin 300 300 1 ${rim_seed} zero yes
+fix f_rim rim langevin 300 300 1 98765 zero yes
+
+# Optional sanity print
+print "rim_langevin: bxlo=${bxlo} bxhi=${bxhi} bylo=${bylo} byhi=${byhi} rim_wA=${rim_wA}" screen yes
+rim_langevin: bxlo=0 bxhi=43.7396027821217 bylo=0 byhi=43.7396027821217 rim_wA=15
+
+# --- stages ---
+include         inputs/lammps/in.equil.lmp
+print "=== Equilibration stage: brief NVT at 300 K ===" append yes
+=== Equilibration stage: brief NVT at 300 K ===
+
+
+# rim group  expected from rim_langevin.in
+group interior subtract all rim
+1455 atoms in group interior
+
+# ---------- Velocity intialization
+# Default seed if none passed in
+variable VEL_SEED equal 13579
+
+velocity interior create 300.0 ${VEL_SEED} mom yes rot yes dist gaussian
+velocity interior create 300.0 13579 mom yes rot yes dist gaussian
+# remove any residual COM drift every 100 steps during equil
+fix fix_mom interior momentum 100 linear 1 1 1
+
+# ---------- Nosé–Hoover thermostat on interior only
+# Choose a gentle damping time--> 0.1 ps is conservative at DT ≈ 0.0005 ps
+variable Tdamp equal 0.1
+fix fix_nvt interior nvt temp 300.0 300.0 ${Tdamp}
+fix fix_nvt interior nvt temp 300.0 300.0 0.1
+fix_modify fix_nvt temp thermo_temp  # use the default thermo temperature compute
+
+# ---------- Pick short equilibration length (≈10% of total, min 1000 steps) ----------
+variable neq equal 100
+print "Equilibration steps (neq) = ${neq} (Tdamp = ${Tdamp} ps)" append yes
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+
+# ---------- Run equilibration -- ----
+run ${neq}
+run 100
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+Your simulation uses code contributions which should be cited:
+- Type Label Framework: https://doi.org/10.1021/acs.jpcb.3c08419
+The log file lists these citations in BibTeX format.
+
+CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE-CITE
+
+PPPM initialization ...
+ERROR: Incorrect boundaries with slab PPPM (src/KSPACE/pppm.cpp:210)
+Last command: run ${neq}
+srun: error: ccc0218: task 0: Exited with exit code 1

@@ -1,0 +1,37 @@
+# rim_langevin.in — robust x–y rim sponge (units metal)
+# Expects: RIM_WIDTH_NM (nm), RIM_GAMMA (ps^-1), RIM_TK (K) passed via -var.
+
+variable rim_seed equal 98765
+
+# Convert rim width to Å
+variable rim_wA equal ${RIM_WIDTH_NM}*10.0
+
+# Box bounds as variables (numbers)
+variable xlo equal xlo
+variable xhi equal xhi
+variable ylo equal ylo
+variable yhi equal yhi
+
+# Precompute the slab faces so region gets plain numbers (no '0+15' tokens)
+variable xlo_hi equal v_xlo + v_rim_wA
+variable xhi_lo equal v_xhi - v_rim_wA
+variable ylo_hi equal v_ylo + v_rim_wA
+variable yhi_lo equal v_yhi - v_rim_wA
+
+# Four x/y edge slabs (use v_ variables — region evaluates them to numbers)
+region rim_xlo block v_xlo    v_xlo_hi  INF INF INF INF units box
+region rim_xhi block v_xhi_lo v_xhi     INF INF INF INF units box
+region rim_ylo block INF INF  v_ylo     v_ylo_hi  INF INF units box
+region rim_yhi block INF INF  v_yhi_lo  v_yhi     INF INF units box
+
+# Union into a single rim group
+group rim region rim_xlo
+group rim union rim rim_xhi
+group rim union rim rim_ylo
+group rim union rim rim_yhi
+
+# Langevin thermostat on the rim only (interior does its own time integrator elsewhere)
+fix f_rim rim langevin ${RIM_TK} ${RIM_TK} ${RIM_GAMMA} ${rim_seed} zero yes
+
+# Optional one-time sanity print
+print "rim_langevin: xlo=${xlo} xhi=${xhi} ylo=${ylo} yhi=${yhi} rim_wA=${rim_wA}" screen yes

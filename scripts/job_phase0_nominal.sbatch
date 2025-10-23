@@ -15,12 +15,12 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 trap 'echo "[ERR] line $LINENO: $BASH_COMMAND" >&2' ERR
 
-# ---------- Resolve repo root & runner ----------
-REPO_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+# ---------- Resolve repo root & runner (honor #SBATCH -D via $PWD) ----------
+REPO_DIR="$PWD"
 RUNNER="${REPO_DIR}/scripts/run_nominal.sh"
 
-cd "${REPO_DIR}"
-echo "SUBMIT_DIR: ${SLURM_SUBMIT_DIR:-$PWD}"
+echo "SUBMIT_DIR: ${SLURM_SUBMIT_DIR:-<unset>}"
+echo "PWD:        ${PWD}"
 echo "REPO_DIR:   ${REPO_DIR}"
 echo "Runner:     ${RUNNER}"
 ls -l "${RUNNER}" || { echo "ERROR: runner not found or not executable"; exit 127; }

@@ -13,7 +13,7 @@ variable bxhi     equal xhi
 variable bylo     equal ylo
 variable byhi     equal yhi
 
-# Precompute slab faces (avoid spaces in expressions)
+# Precompute slab faces (NO spaces in expressions to keep parser happy)
 variable bxlo_hi  equal v_bxlo+v_rim_wA
 variable bxhi_lo  equal v_bxhi-v_rim_wA
 variable bylo_hi  equal v_bylo+v_rim_wA
@@ -25,9 +25,11 @@ region rim_xhi block v_bxhi_lo v_bxhi     INF INF INF INF units box
 region rim_ylo block INF INF   v_bylo     v_bylo_hi  INF INF units box
 region rim_yhi block INF INF   v_byhi_lo  v_byhi     INF INF units box
 
-# Union them into a single region, then define the rim group from that region
-region rim_union union 4 rim_xlo rim_xhi rim_ylo rim_yhi
-group  rim region rim_union
+# Union into one rim group
+group rim region rim_xlo
+group rim union rim rim_xhi
+group rim union rim rim_ylo
+group rim union rim rim_yhi
 
 # Langevin thermostat on the rim only (interior integrates elsewhere)
 fix f_rim rim langevin ${RIM_TK} ${RIM_TK} ${RIM_GAMMA} ${rim_seed} zero yes
