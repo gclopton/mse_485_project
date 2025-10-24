@@ -52,7 +52,5 @@ include         inputs/lammps/includes/pair_ceo2_buck.in
 include         inputs/lammps/includes/rim_langevin.in
 
 # --- stages ---
-
-variable neq equal 0
 include         inputs/lammps/in.equil.lmp
 include         inputs/lammps/in.ttm_spike.lmp

@@ -33,8 +33,11 @@ fix f_ttm interior ttm/grid 12345 ${CE0} ${RHOE0} ${KE0} ${GP} ${GS} ${V0} ${NX}
 # Initialize computes/thermo after adding fixes
 run 0 post no
 
-# Spike length: default NSTEPS minus equilibration steps (neq is always defined now)
-variable nspike equal ${NSTEPS}-${neq}
+# Spike length: default to NSTEPS; if 'neq' exists from equil, subtract it
+variable nspike   equal ${NSTEPS}
+variable have_neq equal exists("neq")
+if "${have_neq} > 0" then "variable nspike equal ${NSTEPS}-${neq}"
+
 print "Spike steps (nspike) = ${nspike}" append yes
 
 # Run the spike

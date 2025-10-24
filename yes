@@ -120,3 +120,20 @@ Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
 === TTM spike stage: NVE (interior) + USER-TTM electron field ===
 TTM source: r0 = 4.5 nm = 45 … ; Se = 27 eV/… ; g0 = 7.4e+16 W/m^3/K
 TTM files: ke='${KE_FILE}', Ce='${CE_FILE}', grid='${GRID_FILE}', src='${SRC_FILE}'
+=== Equilibration stage: brief NVT at 300 K ===
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+=== Equilibration complete; handing off to TTM spike ===
+=== TTM spike stage: NVE (interior) + USER-TTM electron field ===
+TTM source (placeholder): r0 = 4.5 nm = 45 … ; Se = 27 eV/… ; g0 = 7.4e+16 W/m^3/K
+=== Equilibration stage: brief NVT at 300 K ===
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+=== Equilibration complete; handing off to TTM spike ===
+=== TTM spike stage: NVE (interior) + USER-TTM electron field ===
+TTM source (placeholder): r0 = 4.5 nm = 45 A ; Se = 27 eV/A ; g0 = 7.4e+16 W/m^3/K
+=== Equilibration stage: brief NVT at 300 K ===
+Equilibration steps (neq) = 100 (Tdamp = 0.1 ps)
+=== Equilibration complete; handing off to TTM spike ===
+=== TTM spike stage: NVE (interior) + USER-TTM electron field ===
+TTM source (placeholder): r0 = 4.5 nm = 45 A ; Se = 27 eV/A ; g0 = 7.4e+16 W/m^3/K
+Spike steps (nspike) = 300
+=== Spike complete; end of Phase 0 nominal shot ===
