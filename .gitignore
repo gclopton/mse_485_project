@@ -44,48 +44,54 @@ slurm-*.err
 *.e[0-9]*
 
 # -----------------------------
-# LAMMPS runtime outputs (default: ignore all)
-# Keep only tiny provenance (manifest, logs, inputs_snapshot)
+# LAMMPS runtime outputs
+# (ignore runs/* by default; allow only small provenance + figures)
 # -----------------------------
-# Ignore the runs tree by default…
-runs/*
-# …but allow directory traversal for sub-exceptions:
-!runs/**/
-# Whitelist minimal artifacts for review:
-!runs/**/manifest.yaml
-!runs/**/logs/
-!runs/**/logs/log.lammps
-!runs/**/logs/screen.out
-!runs/**/inputs_snapshot/
-!runs/**/inputs_snapshot/**
+runs/*                # ignore everything under runs/ by default
+!runs/**/             # but allow directory traversal
 
-# Still ignore heavy artifacts anywhere under runs:
-**/dumps/
-**/post/
-**/figures/
-**/thermo.dat
-**/ttm_core.dat
-**/*.dump
-**/*.lammpstrj
+# keep only tiny provenance
+!runs/**/manifest.yaml
+
+# keep figures (small PNGs, PDFs)
+!runs/**/figures/
+!runs/**/figures/**
+
+# still ignore all heavy artifacts anywhere under runs/
+runs/**/dumps/
+runs/**/post/
+runs/**/thermo.dat
+runs/**/ttm_core.dat
+runs/**/*.dump
+runs/**/*.lammpstrj
+runs/**/logs/           # DO NOT track per-run logs
+runs/**/inputs_snapshot/ # DO NOT track snapshots (duplicates repo inputs)
 
 # -----------------------------
 # Generated analysis artifacts
+# (ignore by default but keep the Phase-1 minimal drop)
 # -----------------------------
 analysis/**/*.csv
 analysis/**/*.npz
 analysis/**/*.png
 analysis/**/*.pdf
 analysis/**/*.txt
-figures/phase1/
-figures/phase2/
 !analysis/definitions.md
 !analysis/templates/**
 !analysis/README.md
-!figures/README.md
+
+# keep the small Phase-1 minimal deliverables
+!analysis/phase1_minimal/
+!analysis/phase1_minimal/**
+
+# Top-level figures: keep curated ones
+!figures/
+!figures/**
+# if you later mirror large sets here, you can re-ignore subfolders, e.g.:
+# figures/phase2/raw/
 
 # -----------------------------
 # Inputs — keep sources, ignore generated structures by default
-# (Track at least one canonical .lmp for Phase 0, see note below)
 # -----------------------------
 !inputs/ttm/**
 !inputs/structure/POSCAR_CeO2_unit.vasp
@@ -103,9 +109,3 @@ env/*.log
 # Third-party bundles
 # -----------------------------
 .thirdparty/
-
-# -----------------------------
-# Scripts
-# -----------------------------
-# (Do NOT ignore your generator — track it!)
-# scripts/generate_constant_ke_reference.py

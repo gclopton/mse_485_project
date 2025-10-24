@@ -1,3 +1,0 @@
-kspace_style  pppm 1.0e-5
-kspace_modify order 5
-kspace_modify slab 3.0

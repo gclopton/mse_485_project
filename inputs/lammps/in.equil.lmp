@@ -30,3 +30,6 @@ unfix fix_nvt
 unfix fix_mom
 
 print "=== Equilibration complete; handing off to TTM spike ===" append yes
+
+# one reference snapshot (for WS/displacement analyses)
+write_dump all custom ${OUTDIR}/dumps/atoms.equil.lammpstrj id type x y z

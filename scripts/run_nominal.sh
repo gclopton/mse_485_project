@@ -31,7 +31,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
 # --------------- Parse physics.yaml (and pick up TTM paths) ---------------
-# Use a tiny Python helper (PyYAML) to emit shell assignments.
 IFS= read -r -d '' PY_HELPER << 'PYCODE' || :
 import sys, yaml, pathlib
 p = pathlib.Path("config/physics.yaml")
@@ -62,16 +61,13 @@ Ce_file        = req(d,'ttm','Ce_curve_file')
 grid_file      = req(d,'ttm','grid_file')
 src_file       = req(d,'source','pulse') and 'inputs/ttm/source_profile.yaml'
 
-# Optional rim params
 rim = d.get('forcefield',{}).get('rim_langevin',{})
 gamma_ps_inv   = rim.get('gamma_ps_inv', None)
 rim_width_nm   = rim.get('width_nm', None)
 rim_target_K   = rim.get('target_K', None)
 
-# Structure path
 data_path      = req(d,'structure','data_path')
 
-# Convert dt_fs → ps and compute nsteps
 dt_ps = dt_fs * 1e-3
 nsteps = int(round(t_total_ps / dt_ps))
 
@@ -93,7 +89,6 @@ assign = {
   "SRC_FILE": src_file,
 }
 
-# Optional rim parameters
 if gamma_ps_inv is not None: assign["RIM_GAMMA"] = f"{float(gamma_ps_inv):.12g}"
 if rim_width_nm  is not None: assign["RIM_WIDTH_NM"] = f"{float(rim_width_nm):.12g}"
 if rim_target_K  is not None: assign["RIM_TK"] = f"{float(rim_target_K):.12g}"
@@ -159,12 +154,68 @@ snapshot_dir: ${SNAP}
 timestamp: ${timestamp}
 EOF
 
+# ---------- Precompute Te.in (cylindrical Gaussian on TTM grid) ----------
+TEF="${RUN_DIR}/post/Te.in"
+python3 - <<PY || { echo "ERROR: Te.in generation failed" >&2; exit 88; }
+import os, math, sys
+
+DATAFILE = r"""${DATAFILE}"""
+R0_nm    = float(r"""${R0}""")
+TE_BASE  = 300.0
+TE_CORE  = 5000.0
+grid_A   = 1.0  # Å target spacing (Phase 0)
+
+# Parse xlo/xhi etc. from LAMMPS data file
+xlo=xhi=ylo=yhi=zlo=zhi=None
+with open(DATAFILE,"r") as f:
+    for ln in f:
+        s=ln.split()
+        if len(s)==4 and s[2:]==["xlo","xhi"]:
+            xlo,xhi = float(s[0]), float(s[1])
+        elif len(s)==4 and s[2:]==["ylo","yhi"]:
+            ylo,yhi = float(s[0]), float(s[1])
+        elif len(s)==4 and s[2:]==["zlo","zhi"]:
+            zlo,zhi = float(s[0]), float(s[1])
+        if None not in (xlo,xhi,ylo,yhi,zlo,zhi):
+            break
+if None in (xlo,xhi,ylo,yhi,zlo,zhi):
+    print("Could not parse box from data file", file=sys.stderr); sys.exit(2)
+
+Lx, Ly, Lz = xhi-xlo, yhi-ylo, zhi-zlo
+NX = int(math.ceil(Lx/grid_A));  NY = int(math.ceil(Ly/grid_A));  NZ = int(math.ceil(Lz/grid_A))
+dx, dy = Lx/NX, Ly/NY
+sigma = (R0_nm*10.0)/math.sqrt(2.0)  # Å
+
+tef = r"""${TEF}"""
+os.makedirs(os.path.dirname(tef), exist_ok=True)
+with open(tef, "w") as out:
+    for iz in range(1, NZ+1):
+        for iy in range(1, NY+1):
+            y = (iy-0.5)*dy - 0.5*Ly
+            for ix in range(1, NX+1):
+                x = (ix-0.5)*dx - 0.5*Lx
+                r2 = x*x + y*y
+                Te = TE_BASE + (TE_CORE-TE_BASE)*math.exp(-r2/(2.0*sigma*sigma))
+                out.write(f"{ix} {iy} {iz} {Te:.6f}\n")
+
+# tiny manifest
+with open(tef + ".meta.txt","w") as m:
+    m.write(f"NX NY NZ = {NX} {NY} {NZ}\n")
+    m.write(f"expected_lines = {NX*NY*NZ}\n")
+    m.write(f"Lx Ly Lz (A) = {Lx} {Ly} {Lz}\n")
+    m.write(f"R0_nm = {R0_nm}\n")
+PY
+
+# Quick sanity print to job logs
+wc -l "$TEF" || true
+head -n 2 "$TEF" || true
+tail -n 2 "$TEF" || true
+
 # --------------- Build LAMMPS command ---------------
 LAMMPS_IN=inputs/lammps/in.main.lmp
 LOGFILE="${RUN_DIR}/logs/log.lammps"
 SCREEN="${RUN_DIR}/logs/screen.out"
 
-# Ensure log paths exist and create files so we have something even on early exit
 mkdir -p "$(dirname "$SCREEN")" "$(dirname "$LOGFILE")"
 : > "$SCREEN"
 : > "$LOGFILE"
@@ -179,7 +230,8 @@ LAMMPS_CMD=(
   -var GRID_FILE "$GRID_FILE" -var SRC_FILE "$SRC_FILE"
   -var BX "$BX" -var BY "$BY" -var BZ "$BZ"
   -var VARS_FILE "$RUN_DIR/vars.lmp"
-  -var OUTDIR "$RUN_DIR" 
+  -var OUTDIR "$RUN_DIR"
+  -var TEF "$TEF"
 )
 
 # Optional rim parameters (only if present in YAML and consumed by your includes)
